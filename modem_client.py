@@ -6,8 +6,8 @@ import sys
 
 # Tenta importar ModemCrypto e config.
 # O bloco if/else permite que o script seja executado tanto como módulo quanto como script standalone.
-if __name__ == "__main__" and __package__ is None:
-    # Hack para permitir importação relativa se rodado diretamente como script
+if __name__ == "__main__" or not __package__:
+    # Hack para permitir importação relativa se rodado diretamente como script ou modulo top-level
     import os
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     from modem_crypto import ModemCrypto

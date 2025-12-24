@@ -65,6 +65,19 @@ python3 sms/modem_client.py 11999999999 "Mensagem de Teste"
 python3 sms/modem_client.py 11999999999 "Mensagem de Teste" --user outro_usuario --password nova_senha
 ```
 
+### Servidor HTTP (API)
+Para enviar SMS via requisições HTTP (útil para integrar com outros sistemas):
+1. Inicie o servidor:
+    ```bash
+    python3 sms/sms_server.py
+    ```
+2. Envie uma requisição POST:
+    ```bash
+    curl -X POST http://localhost:5001/send_sms \
+         -H "Content-Type: application/json" \
+         -d '{"number": "11999999999", "message": "Olá via API!"}'
+    ```
+
 ## Aviso Legal
 
 Este projeto é para fins educacionais. Use com responsabilidade.

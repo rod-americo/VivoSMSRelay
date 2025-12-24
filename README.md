@@ -29,14 +29,19 @@ pip install requests python-dotenv
     cd VivoSMSRelay
     ```
 
-2.  **Variáveis de Ambiente**:
-    Crie um arquivo `.env` na raiz do projeto (opcional, os padrões são `admin`/`vivo` @ `192.168.1.1`):
+2.  **Configuração Automática (Recomendado)**:
+    Execute o script auxiliar para gerar o arquivo `.env` com suas credenciais e hash otimizado:
+    ```bash
+    python3 sms/setup_env.py
+    ```
+
+3.  **Configuração Manual (Alternativa)**:
+    Crie um arquivo `.env` na raiz do projeto:
     ```ini
     MODEM_URL=http://192.168.1.1
     MODEM_USER=admin
+    # Use MODEM_PASS (cálculo dinâmico) OU MODEM_HASH (pré-calculado)
     MODEM_PASS=vivo
-    # Opcional: Hash pré-calculado para sobrescrever o cálculo dinâmico
-    # MODEM_HASH=...
     ```
 
 ## Uso

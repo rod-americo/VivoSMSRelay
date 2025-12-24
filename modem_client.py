@@ -59,14 +59,13 @@ class ModemClient:
             }
         }
         
-        print(f"Logging in as {self.username}...")
+        print(f"Logando como {self.username}...")
         r = self.session.post(url, json=payload_login, timeout=10)
         
         if r.status_code == 200:
-            print(f"Login Response: {r.text}")
             return True
         else:
-            print(f"Login Failed via HTTP {r.status_code}: {r.text}")
+            print(f"Falha no Login via HTTP {r.status_code}: {r.text}")
             return False
 
     def send_sms(self, number, content):
@@ -80,14 +79,25 @@ class ModemClient:
             }
         }
         
-        print(f"Sending SMS to {number}...")
+        print(f"Enviando SMS para {number}...")
         r = self.session.post(url, json=payload, timeout=10)
         
         if r.status_code == 200:
-            print(f"SMS Send Response: {r.text}")
-            return True
+            try:
+                resp = r.json()
+                # Check for success in send_report
+                # Structure: { "set_sms_send": { "send_report": [ { "send_success": true } ] } }
+                if resp.get("set_sms_send", {}).get("send_report", [{}])[0].get("send_success"):
+                    print("SMS enviado com sucesso!")
+                    return True
+                else:
+                    print(f"Erro ao enviar SMS: {r.text}")
+                    return False
+            except:
+                print(f"Erro ao analisar resposta: {r.text}")
+                return False
         else:
-            print(f"SMS Send Failed via HTTP {r.status_code}: {r.text}")
+            print(f"Falha no envio via HTTP {r.status_code}: {r.text}")
             return False
 
 if __name__ == "__main__":
@@ -108,7 +118,7 @@ if __name__ == "__main__":
     
     if not pwd and not pwd_hash:
         pwd = DEFAULT_PASS
-        print(f"Using default password: {DEFAULT_PASS}")
+        # print(f"Using default password: {DEFAULT_PASS}")
     
     client = ModemClient(username=args.user, password=pwd, password_hash=pwd_hash)
     if client.login():

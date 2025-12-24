@@ -1,65 +1,65 @@
 # Vivo SMS Relay
 
-This project allows programmatic control of Vivo Modems (likely **ZTE** models such as MF79U/MF833) to send SMS messages via their web interface/API.
+Este projeto permite o controle programático de roteadores 4G (Modems) da Vivo (provavelmente modelos **ZTE** como MF79U/MF833) para envio de SMS através de sua interface web/API.
 
-It was developed through reverse engineering of the modem's web interface authentication (custom AES-like encryption) and internal API endpoints.
+Foi desenvolvido através de engenharia reversa da autenticação da interface web do modem (que utiliza uma criptografia AES customizada) e dos endpoints internos da API.
 
-## Features
+## Funcionalidades
 
--   **Dynamic Authentication**: Supports any username/password combination by replicating the modem's custom hashing algorithm (TIFA key).
--   **Performance Optimization**: Pre-calculated hash support for default credentials (`admin`/`vivo`) to avoid re-encryption overhead.
--   **Configurable**: Easy setup via `.env` file.
+-   **Autenticação Dinâmica**: Suporta qualquer combinação de usuário/senha replicando o algoritmo de hash customizado do modem (chave TIFA).
+-   **Otimização de Performance**: Suporte a hash pré-calculado para as credenciais padrão (`admin`/`vivo`) para evitar overhead de re-encriptação.
+-   **Configurável**: Configuração fácil via arquivo `.env`.
 
-## Requirements
+## Requisitos
 
 -   Python 3.x
 -   `requests`
 -   `python-dotenv`
 
-Install dependencies:
+Instale as dependências:
 ```bash
 pip install requests python-dotenv
 ```
 
-## Setup
+## Configuração
 
-1.  **Clone the repository**:
+1.  **Clone o repositório**:
     ```bash
     git clone https://github.com/rod-americo/VivoSMSRelay.git
     cd VivoSMSRelay
     ```
 
-2.  **Configuration**:
-    Create a `.env` file in the project root (optional, defaults are `admin`/`vivo` @ `192.168.1.1`):
+2.  **Variáveis de Ambiente**:
+    Crie um arquivo `.env` na raiz do projeto (opcional, os padrões são `admin`/`vivo` @ `192.168.1.1`):
     ```ini
     MODEM_URL=http://192.168.1.1
     MODEM_USER=admin
     MODEM_PASS=vivo
-    # Optional: Pre-calculated hash to override dynamic calculation
+    # Opcional: Hash pré-calculado para sobrescrever o cálculo dinâmico
     # MODEM_HASH=...
     ```
 
-## Usage
+## Uso
 
-### As a Library
+### Como Biblioteca
 ```python
 from sms.modem_client import ModemClient
 
-client = ModemClient() # Uses credentials from .env or defaults
+client = ModemClient() # Usa credenciais do .env ou padrões
 if client.login():
-    client.send_sms("11999999999", "Hello from Python!")
+    client.send_sms("11999999999", "Olá do Python!")
 ```
 
-### CLI
-Send an SMS directly from the terminal:
+### Linha de Comando (CLI)
+Envie um SMS diretamente pelo terminal:
 ```bash
-# Uses defaults or .env
-python3 sms/modem_client.py 11999999999 "Test Message"
+# Usa padrões ou .env
+python3 sms/modem_client.py 11999999999 "Mensagem de Teste"
 
-# Override credentials
-python3 sms/modem_client.py 11999999999 "Test Message" --user myuser --password mypass
+# Sobrescrever credenciais
+python3 sms/modem_client.py 11999999999 "Mensagem de Teste" --user outro_usuario --password nova_senha
 ```
 
-## Disclaimer
+## Aviso Legal
 
-This project is for educational purposes. Use responsibly.
+Este projeto é para fins educacionais. Use com responsabilidade.

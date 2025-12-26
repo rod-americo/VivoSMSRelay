@@ -78,6 +78,25 @@ Para enviar SMS via requisições HTTP (útil para integrar com outros sistemas)
          -d '{"number": "11999999999", "message": "Olá via API!"}'
     ```
 
+### Gestão de Estatísticas (Uso de Dados)
+O script `modem_stats.py` permite visualizar o consumo de dados e limpar o histórico. Ele também registra a data/hora do último reset.
+
+**Visualizar Consumo:**
+```bash
+python3 sms/modem_stats.py
+# Saída: Download/Upload em KB/MB e data de início do ciclo.
+```
+
+**Limpar Histórico (Resetar Ciclo):**
+```bash
+python3 sms/modem_stats.py --clear
+```
+
+**Saída em JSON (para automação):**
+```bash
+python3 sms/modem_stats.py --json
+```
+
 ## Aviso Legal
 
 Este projeto é para fins educacionais. Use com responsabilidade.

@@ -1,6 +1,6 @@
 # Vivo SMS Relay
 
-Este projeto permite o controle programático de roteadores 4G (Modems) da Vivo (provavelmente modelos **ZTE** como MF79U/MF833) para envio de SMS através de sua interface web/API.
+Este projeto permite o controle programático de roteadores 4G (Modems) da Vivo (modelo WLD71-T5A) para envio de SMS através de sua interface web/API.
 
 Foi desenvolvido através de engenharia reversa da autenticação da interface web do modem (que utiliza uma criptografia AES customizada) e dos endpoints internos da API.
 

@@ -62,6 +62,7 @@ MODEM_URL=http://192.168.1.1
 MODEM_USER=admin
 # Use MODEM_PASS (cálculo dinâmico) OU MODEM_HASH (pré-calculado)
 MODEM_PASS=vivo
+SMS_SERVER_PORT=5001
 ```
 
 Também é possível usar:
@@ -119,6 +120,12 @@ python3 sms_server.py
 curl -X POST http://localhost:5001/send_sms \
      -H "Content-Type: application/json" \
      -d '{"number": "11999999999", "message": "Olá via API"}'
+```
+
+Para mudar a porta do servidor, defina no `.env`:
+
+```ini
+SMS_SERVER_PORT=5001
 ```
 
 ### Estatísticas de uso

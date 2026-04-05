@@ -42,6 +42,7 @@ MODEM_USER={user}
 # mas deixamos comentado para referência ou caso queira alterar manualmente depois.
 # MODEM_PASS={password}
 MODEM_HASH={pwd_hash}
+SMS_SERVER_PORT=5001
 """
     
     # Grava o arquivo

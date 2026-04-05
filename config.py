@@ -4,8 +4,24 @@ from dotenv import load_dotenv
 # Carrega variáveis de ambiente do arquivo .env
 load_dotenv()
 
+
+def get_int_env(name, default):
+    """Lê uma variável de ambiente inteira com fallback seguro."""
+    value = os.getenv(name)
+    if value in (None, ""):
+        return default
+
+    try:
+        return int(value)
+    except ValueError:
+        print(f"Aviso: {name} inválida ({value!r}); usando {default}.")
+        return default
+
 # Detalhes de Conexão do Modem
 MODEM_URL = os.getenv("MODEM_URL", "http://192.168.1.1")
+
+# Configuração do servidor HTTP opcional
+SMS_SERVER_PORT = get_int_env("SMS_SERVER_PORT", 5001)
 
 # Credenciais
 MODEM_USER = os.getenv("MODEM_USER", "admin")

@@ -6,6 +6,7 @@ import time
 # Ensure we can import modules from the current directory
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+import config
 from modem_client import ModemClient
 
 app = Flask(__name__)
@@ -44,6 +45,5 @@ def send_sms():
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    # Listen on all interfaces on port 5000 (or regular Flask default)
-    # Debug mode disabled for production-like usage, but helpful for dev
-    app.run(host='0.0.0.0', port=5001)
+    # Listen on all interfaces using the configured port.
+    app.run(host='0.0.0.0', port=config.SMS_SERVER_PORT)

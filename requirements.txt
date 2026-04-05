@@ -1,0 +1,6 @@
+# Core runtime dependencies
+requests
+python-dotenv
+
+# Required only for the optional HTTP API server
+Flask

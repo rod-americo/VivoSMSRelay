@@ -22,10 +22,17 @@ MODEM_URL = os.getenv("MODEM_URL", "http://192.168.1.1")
 
 # Configuração do servidor HTTP opcional
 SMS_SERVER_PORT = get_int_env("SMS_SERVER_PORT", 5001)
+SMS_POLL_INTERVAL = get_int_env("SMS_POLL_INTERVAL", 30)
+SMS_POLL_REQUEST_TIMEOUT = get_int_env("SMS_POLL_REQUEST_TIMEOUT", 15)
 
 # Credenciais
 MODEM_USER = os.getenv("MODEM_USER", "admin")
 MODEM_PASS = os.getenv("MODEM_PASS", "vivo")
+SMS_WEBHOOK_URL = os.getenv("SMS_WEBHOOK_URL", None)
+SMS_POLL_STATE_FILE = os.getenv(
+    "SMS_POLL_STATE_FILE",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "sms_poller_state.json"),
+)
 
 # Hash pré-calculado
 # O script tenta ler um hash já pronto do ambiente para evitar recalcular a cada execução.

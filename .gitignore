@@ -5,3 +5,4 @@ __pycache__/
 .env
 .DS_Store
 modem_stats_state.json
+sms_poller_state.json

@@ -1,138 +1,160 @@
 # Vivo SMS Relay
 
-Este projeto permite o controle programático de roteadores 4G da Vivo para envio de SMS por meio da interface web interna do modem.
+Automação para roteadores 4G da Vivo com interface web ZTE.
 
-O fluxo foi construído a partir de engenharia reversa da autenticação da interface web e dos endpoints usados pelo equipamento.
+O projeto faz login na UI interna do modem, envia SMS, lê a inbox, consulta estatísticas de tráfego e pode encaminhar mensagens novas para um webhook HTTP. A implementação foi construída a partir de engenharia reversa dos endpoints usados pela própria interface web do equipamento.
 
-## Funcionalidades
+## O que o projeto faz
 
-- **Autenticação dinâmica**: calcula o hash esperado pelo modem a partir de usuário e senha.
-- **Hash otimizado para credenciais padrão**: evita recálculo quando o modem está com `admin` / `vivo`.
-- **CLI para envio de SMS**: uso direto via terminal.
-- **Servidor HTTP opcional**: expõe uma API simples para integração local.
-- **Consulta e reset de estatísticas**: lê consumo de rede e registra o último reset localmente.
+- Envia SMS por CLI ou por HTTP.
+- Lê SMS recebidos por CLI ou por HTTP.
+- Marca mensagens como lidas quando solicitado.
+- Encaminha apenas SMS novos para um webhook, com estado local para evitar reprocessar backlog.
+- Consulta e limpa estatísticas de uso de rede.
+- Instala serviços `systemd` para a API HTTP e para o poller contínuo.
 
-## Estrutura do projeto
+## Estrutura
 
 - `config.py`: leitura de configuração via ambiente e `.env`
-- `modem_client.py`: cliente principal para login e envio de SMS
-- `modem_crypto.py`: implementação do algoritmo de hash usado pelo modem
-- `modem_stats.py`: leitura e limpeza de estatísticas de rede
-- `setup_env.py`: assistente interativo para gerar `.env`
-- `sms_server.py`: API HTTP simples para envio de SMS
+- `modem_client.py`: cliente principal para login, envio e leitura de SMS
+- `modem_crypto.py`: implementação do hash de senha usado pelo modem
+- `sms_server.py`: API HTTP para envio e leitura da inbox
+- `read_sms.py`: leitura da inbox via terminal
+- `sms_poller.py`: poller de inbox com webhook e estado local
+- `modem_stats.py`: consulta e limpeza de estatísticas de tráfego
+- `setup_env.py`: assistente para gerar `.env`
+- `install_sms_server_service.sh`: instala a API como serviço `systemd`
+- `install_sms_poller_service.sh`: instala o poller como serviço `systemd`
 
 ## Requisitos
 
 - Python 3.x
 - `requests`
 - `python-dotenv`
-- `Flask` apenas se você for usar a API HTTP (`sms_server.py`)
+- `Flask` apenas para a API HTTP (`sms_server.py`)
 
-Instalação das dependências básicas:
-
-```bash
-pip install requests python-dotenv
-```
-
-Se também for usar o servidor HTTP:
+Instalação:
 
 ```bash
-pip install Flask
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ## Configuração
 
-1. Clone o repositório:
+### `.env`
 
-```bash
-git clone https://github.com/rod-americo/VivoSMSRelay.git
-cd VivoSMSRelay
-```
-
-2. Gere o `.env` automaticamente:
+Você pode gerar o arquivo com:
 
 ```bash
 python3 setup_env.py
 ```
 
-3. Ou crie o `.env` manualmente na raiz do projeto:
+Ou criar manualmente:
 
 ```ini
 MODEM_URL=http://192.168.1.1
 MODEM_USER=admin
-# Use MODEM_PASS (cálculo dinâmico) OU MODEM_HASH (pré-calculado)
+
+# Use MODEM_PASS ou MODEM_HASH
 MODEM_PASS=vivo
+# MODEM_HASH=<hash_precalculado>
+
 SMS_SERVER_PORT=5001
+
+# Poller / webhook
+SMS_WEBHOOK_URL=http://127.0.0.1:9000/sms
+SMS_POLL_INTERVAL=30
+SMS_POLL_REQUEST_TIMEOUT=15
+SMS_POLL_STATE_FILE=/caminho/para/sms_poller_state.json
 ```
 
-Também é possível usar:
+### Variáveis de ambiente
 
-```ini
-MODEM_HASH=<hash_precalculado>
-```
+- `MODEM_URL`: URL base da interface do modem
+- `MODEM_USER`: usuário da interface web
+- `MODEM_PASS`: senha em texto plano
+- `MODEM_HASH`: hash pré-calculado da senha; tem prioridade sobre `MODEM_PASS`
+- `SMS_SERVER_PORT`: porta da API HTTP
+- `SMS_WEBHOOK_URL`: destino do poller
+- `SMS_POLL_INTERVAL`: intervalo em segundos entre leituras da inbox
+- `SMS_POLL_REQUEST_TIMEOUT`: timeout do POST do webhook
+- `SMS_POLL_STATE_FILE`: arquivo local onde o poller guarda o último `idx` processado
 
-## Uso
+## Uso rápido
 
-### Como biblioteca
-
-```python
-from modem_client import ModemClient
-
-client = ModemClient()
-if client.login():
-    client.send_sms("11999999999", "Olá do Python!")
-```
-
-### Linha de comando
-
-Envie um SMS diretamente pelo terminal:
+### 1. Enviar SMS
 
 ```bash
-# Usa credenciais do .env ou os padrões
 python3 modem_client.py 11999999999 "Mensagem de teste"
 ```
 
-Sobrescrevendo as credenciais:
+Com credenciais explícitas:
 
 ```bash
-python3 modem_client.py 11999999999 "Mensagem de teste" --user outro_usuario --password nova_senha
+python3 modem_client.py 11999999999 "Mensagem de teste" --user admin --password vivo
 ```
 
-Usando hash pré-calculado diretamente:
+Com hash explícito:
 
 ```bash
 python3 modem_client.py 11999999999 "Mensagem de teste" --user admin --hash <hash>
 ```
 
-### Servidor HTTP
+### 2. Ler SMS recebidos
 
-Para enviar SMS via requisições HTTP:
-
-1. Inicie o servidor:
+Últimos 10:
 
 ```bash
-python3 sms_server.py
+python3 read_sms.py --limit 10
 ```
 
-2. Envie uma requisição `POST`:
+Apenas não lidos:
 
 ```bash
-curl -X POST http://localhost:5001/send_sms \
-     -H "Content-Type: application/json" \
-     -d '{"number": "11999999999", "message": "Olá via API"}'
+python3 read_sms.py --limit 10 --unread-only
 ```
 
-Para mudar a porta do servidor, defina no `.env`:
+Saída JSON:
 
-```ini
-SMS_SERVER_PORT=5001
+```bash
+python3 read_sms.py --limit 10 --json
 ```
 
-### Estatísticas de uso
+Marcar como lidos os SMS retornados:
 
-O script `modem_stats.py` permite consultar consumo de dados e limpar o histórico. Ele também salva localmente a data e hora do último reset em `modem_stats_state.json`.
+```bash
+python3 read_sms.py --limit 5 --mark-read
+```
 
-Visualizar consumo:
+### 3. Encaminhar SMS novos para webhook
+
+Executar um único ciclo:
+
+```bash
+python3 sms_poller.py --once --webhook-url http://127.0.0.1:9000/sms
+```
+
+Executar continuamente:
+
+```bash
+python3 sms_poller.py --webhook-url http://127.0.0.1:9000/sms
+```
+
+Na primeira execução, o comportamento padrão é inicializar o estado com o maior `idx` atual da inbox e não reenviar mensagens antigas. Para reenviar também o backlog existente:
+
+```bash
+python3 sms_poller.py --once --replay-existing --webhook-url http://127.0.0.1:9000/sms
+```
+
+Para marcar como lidas as mensagens encaminhadas:
+
+```bash
+python3 sms_poller.py --mark-read --webhook-url http://127.0.0.1:9000/sms
+```
+
+### 4. Consultar estatísticas de tráfego
 
 ```bash
 python3 modem_stats.py
@@ -144,23 +166,144 @@ Limpar histórico:
 python3 modem_stats.py --clear
 ```
 
-Saída em JSON:
+Saída JSON:
 
 ```bash
 python3 modem_stats.py --json
 ```
 
-Sobrescrevendo credenciais no script de estatísticas:
+## API HTTP
+
+Suba a API:
 
 ```bash
-python3 modem_stats.py --user admin --password vivo
+python3 sms_server.py
 ```
 
-## Observações
+### Enviar SMS
 
+```bash
+curl -X POST http://localhost:5001/send_sms \
+     -H "Content-Type: application/json" \
+     -d '{"number": "11999999999", "message": "Olá via API"}'
+```
+
+### Ler inbox
+
+Via `GET`:
+
+```bash
+curl "http://localhost:5001/inbox_sms?limit=10&unread_only=1"
+```
+
+Via `POST` JSON:
+
+```bash
+curl -X POST http://localhost:5001/inbox_sms \
+     -H "Content-Type: application/json" \
+     -d '{"limit": 5, "unread_only": true, "mark_read": false}'
+```
+
+### Resposta da inbox
+
+Exemplo:
+
+```json
+{
+  "status": "success",
+  "total_inbox_messages": 31,
+  "returned_messages": 2,
+  "messages": [
+    {
+      "idx": 31,
+      "number": "Vivo",
+      "time": "2026/04/13,18:19:43",
+      "content": "Mensagem...",
+      "unread": true
+    }
+  ]
+}
+```
+
+## Webhook do poller
+
+O `sms_poller.py` envia um `POST` JSON com este formato:
+
+```json
+{
+  "event": "sms_received",
+  "source": "vivosmsrelay",
+  "message": {
+    "idx": 31,
+    "number": "Vivo",
+    "time": "2026/04/13,18:19:43",
+    "content": "Mensagem...",
+    "unread": true
+  },
+  "forwarded_at": "2026-04-14T21:46:10.452625+00:00"
+}
+```
+
+## Serviços systemd
+
+### API HTTP
+
+Instala e sobe o serviço:
+
+```bash
+sudo ./install_sms_server_service.sh
+```
+
+Serviço criado:
+
+- `vivosmsrelay.service`
+
+Função:
+
+- sobe `sms_server.py`
+- expõe `/send_sms` e `/inbox_sms`
+- reinicia automaticamente em caso de falha
+
+### Poller contínuo
+
+Instala e sobe o serviço:
+
+```bash
+sudo ./install_sms_poller_service.sh
+```
+
+Serviço criado:
+
+- `vivosmsrelay-poller.service`
+
+Antes de instalar, configure ao menos:
+
+```ini
+SMS_WEBHOOK_URL=http://127.0.0.1:9000/sms
+SMS_POLL_INTERVAL=30
+```
+
+Função:
+
+- roda `sms_poller.py` em loop
+- consulta a inbox periodicamente
+- encaminha apenas mensagens novas para o webhook
+
+## Limitações e comportamento do modem
+
+- A API do modem aceita no máximo 30 registros por chamada em `get_sms_inbox_records`.
+- Quando `full_content=true`, o modem aceita apenas um único SMS por vez.
+- O cliente deste projeto pagina e expande esses registros automaticamente.
 - Os scripts assumem execução a partir da raiz do repositório.
-- O arquivo `.env` é opcional, mas recomendado para não depender dos valores padrão.
-- O servidor HTTP atual é simples e voltado a uso controlado em rede confiável.
+- O servidor Flask é simples e voltado a uso controlado em rede confiável.
+
+## Desenvolvimento
+
+Validação rápida de sintaxe:
+
+```bash
+python3 -m py_compile modem_client.py read_sms.py sms_poller.py sms_server.py modem_stats.py config.py
+```
 
 ## Aviso legal
 

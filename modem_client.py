@@ -1,4 +1,5 @@
 import argparse
+import base64
 import hashlib
 import hmac
 import html
@@ -99,6 +100,40 @@ def _is_ok_response(response):
     return response == "OK" or (
         isinstance(response, dict) and response.get("response") == "OK"
     )
+
+
+def _xor_bytes(left, right):
+    return bytes(a ^ b for a, b in zip(left, right))
+
+
+def _mgf1(seed, length, hash_func=hashlib.sha1):
+    output = bytearray()
+    counter = 0
+    while len(output) < length:
+        output.extend(hash_func(seed + counter.to_bytes(4, "big")).digest())
+        counter += 1
+    return bytes(output[:length])
+
+
+def _rsa_oaep_encrypt(message, modulus_hex, exponent_hex):
+    modulus = int(modulus_hex, 16)
+    exponent = int(exponent_hex, 16)
+    key_length = (modulus.bit_length() + 7) // 8
+    hash_func = hashlib.sha1
+    digest_length = hash_func().digest_size
+
+    if len(message) > key_length - 2 * digest_length - 2:
+        raise ValueError("Mensagem grande demais para RSA-OAEP.")
+
+    label_hash = hash_func(b"").digest()
+    padding = b"\x00" * (key_length - len(message) - 2 * digest_length - 2)
+    data_block = label_hash + padding + b"\x01" + message
+    seed = secrets.token_bytes(digest_length)
+    masked_data_block = _xor_bytes(data_block, _mgf1(seed, key_length - digest_length - 1))
+    masked_seed = _xor_bytes(seed, _mgf1(masked_data_block, digest_length))
+    encoded_message = b"\x00" + masked_seed + masked_data_block
+    encrypted = pow(int.from_bytes(encoded_message, "big"), exponent, modulus)
+    return encrypted.to_bytes(key_length, "big").hex()
 
 
 class BaseModemClient:
@@ -471,10 +506,11 @@ class HuaweiModemClient(BaseModemClient):
         response.raise_for_status()
         return _parse_xml_response(response.text)
 
-    def _post_xml(self, path, data, auth=True, timeout=10):
+    def _post_xml(self, path, data, auth=True, timeout=10, content_type=None):
         headers = {
             "Accept": "*/*",
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Content-Type": content_type
+            or "application/x-www-form-urlencoded; charset=UTF-8",
             "_ResponseSource": "Broswer",
         }
         if auth:
@@ -490,6 +526,22 @@ class HuaweiModemClient(BaseModemClient):
         self._remember_response_tokens(response)
         response.raise_for_status()
         return _parse_xml_response(response.text)
+
+    def _get_public_key(self):
+        data = self._get_xml("/api/webserver/publickey", auth=False)
+        modulus = data.get("encpubkeyn")
+        exponent = data.get("encpubkeye")
+        if not modulus or not exponent:
+            raise RuntimeError(f"Resposta inesperada de publickey: {data}")
+        return modulus, exponent
+
+    def _encrypted_nonce(self):
+        first = secrets.token_hex(32)
+        second = secrets.token_hex(32)
+        nonce = first + second
+        encoded_nonce = base64.b64encode(nonce.encode("utf-8"))
+        modulus, exponent = self._get_public_key()
+        return _rsa_oaep_encrypt(encoded_nonce, modulus, exponent)
 
     def _scram_client_proof(self, password, salt_hex, iterations, first_nonce, server_nonce):
         salt = bytes.fromhex(salt_hex)
@@ -578,19 +630,25 @@ class HuaweiModemClient(BaseModemClient):
     def send_sms(self, number, content):
         print(f"Enviando SMS para {number}...")
         try:
+            payload = {
+                "Index": -1,
+                "Phones": [number],
+                "Sca": "",
+                "Content": content,
+                "Length": len(content),
+                "Reserved": 1,
+                "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            # The SMS endpoint expects the same encrypted nonce wrapper used by
+            # the official UI getPassword("smsSend", ...) helper.
+            payload["nonce"] = self._encrypted_nonce()
+            payload["hmac_len"] = 32
             response = self._post_xml(
                 "/api/sms/send-sms",
-                {
-                    "Index": -1,
-                    "Phones": [number],
-                    "Sca": "",
-                    "Content": content,
-                    "Length": len(content),
-                    "Reserved": 1,
-                    "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                },
+                payload,
                 auth=True,
                 timeout=20,
+                content_type="application/x-www-form-urlencoded; charset=UTF-8;enc",
             )
             if _is_ok_response(response):
                 print("SMS enviado com sucesso.")

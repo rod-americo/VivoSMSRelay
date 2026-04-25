@@ -12,7 +12,7 @@ O projeto nasceu para o modem Vivo/ZTE legado, mas agora usa drivers para suport
 Aliases aceitos:
 
 - `vivo` e `mf79u` apontam para `zte`.
-- `zowee`, `hilink`, `h153` e `h153-381` apontam para `huawei`.
+- `zowee`, `hilink`, `h153`, `h153-381` e `5gcpe` apontam para `huawei`.
 
 ## O que o projeto faz
 
@@ -174,11 +174,15 @@ python3 sms_poller.py --mark-read --webhook-url http://127.0.0.1:9000/sms
 python3 modem_stats.py
 ```
 
-Limpar historico:
+Limpar historico de trafego no equipamento:
 
 ```bash
 python3 modem_stats.py --clear
 ```
+
+No driver `huawei`, este comando chama `/api/monitoring/clear-traffic` com
+token CSRF novo e tambem atualiza `modem_stats_state.json` com o inicio do
+ciclo local.
 
 Saida JSON:
 

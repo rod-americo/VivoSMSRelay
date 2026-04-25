@@ -76,7 +76,12 @@ def build_initial_state(current_max_idx):
 
 
 def run_poll_cycle(args):
-    client = ModemClient(username=args.user, password=args.password, password_hash=args.hash)
+    client = ModemClient(
+        username=args.user,
+        password=args.password,
+        password_hash=args.hash,
+        driver=args.driver,
+    )
     if not client.login():
         raise RuntimeError("Falha no login no modem.")
 
@@ -183,6 +188,7 @@ if __name__ == "__main__":
         action="store_true",
         help="Marca como lidas as mensagens encaminhadas com sucesso",
     )
+    parser.add_argument("--driver", help="Driver do modem: zte ou huawei")
     parser.add_argument("--user", help="Usuário do modem (sobrescreve config)")
     parser.add_argument("--password", help="Senha do modem (texto plano)")
     parser.add_argument("--hash", help="Hash da senha do modem (opcional)")

@@ -498,12 +498,14 @@ class HuaweiModemClient(BaseModemClient):
         salted_password = hashlib.pbkdf2_hmac(
             "sha256", password.encode("utf-8"), salt, int(iterations)
         )
-        client_key = hmac.new(salted_password, b"Client Key", hashlib.sha256).digest()
+        # The router's emui-crypto.js calls CryptoJS.HmacSHA256(message, key) with
+        # the SCRAM arguments reversed compared with the RFC wording.
+        client_key = hmac.new(b"Client Key", salted_password, hashlib.sha256).digest()
         stored_key = hashlib.sha256(client_key).digest()
-        client_signature = hmac.new(stored_key, auth_message, hashlib.sha256).digest()
+        client_signature = hmac.new(auth_message, stored_key, hashlib.sha256).digest()
         client_proof = bytes(a ^ b for a, b in zip(client_key, client_signature)).hex()
-        server_key = hmac.new(salted_password, b"Server Key", hashlib.sha256).digest()
-        server_signature = hmac.new(server_key, auth_message, hashlib.sha256).hexdigest()
+        server_key = hmac.new(b"Server Key", salted_password, hashlib.sha256).digest()
+        server_signature = hmac.new(auth_message, server_key, hashlib.sha256).hexdigest()
         return client_proof, server_signature
 
     def login(self):

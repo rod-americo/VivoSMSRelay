@@ -87,6 +87,8 @@ SMS_SERVER_PORT=5001
 ```
 
 `MODEM_HASH` nao se aplica ao driver `huawei`, porque esse firmware usa login SCRAM com nonce/salt/iteracoes.
+O driver replica a variante SCRAM implementada pela biblioteca `emui-crypto.js`
+do firmware, incluindo a ordem dos argumentos HMAC usada pelo roteador.
 
 ### Poller / webhook
 

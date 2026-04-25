@@ -1,56 +1,82 @@
-import sys
-import os
 import getpass
+import os
+import sys
 
-# Importa as classes necessárias do projeto
 try:
     from modem_crypto import ModemCrypto
 except ImportError:
-    # Ajuste de path caso rodado de fora do diretório
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     from modem_crypto import ModemCrypto
 
+
+def choose_driver():
+    driver = input("Driver do modem [zte/huawei] (zte): ").strip().lower()
+    if not driver:
+        driver = "zte"
+    if driver in {"vivo", "mf79u"}:
+        return "zte"
+    if driver in {"zowee", "hilink", "h153", "h153-381"}:
+        return "huawei"
+    if driver not in {"zte", "huawei"}:
+        raise SystemExit(f"Driver nao suportado: {driver}")
+    return driver
+
+
 def setup():
-    """Guiado interativo para configurar o ambiente."""
-    print("=== Configuração do Vivo SMS Relay ===")
-    print("Este script vai gerar o arquivo .env com suas configurações.")
-    print("Pressione Enter para usar os valores padrão [entre colchetes].\n")
+    """Assistente interativo para gerar .env."""
+    print("=== Configuracao do CPE SMS Relay ===")
+    print("Este script gera o arquivo .env local, que nao deve ser versionado.")
+    print("Pressione Enter para usar os valores padrao entre colchetes.\n")
 
-    # Coleta URL
-    url = input("URL do Modem [http://192.168.1.1]: ").strip()
-    if not url:
-        url = "http://192.168.1.1"
+    driver = choose_driver()
+    default_url = "http://192.168.8.1" if driver == "huawei" else "http://192.168.1.1"
+    url = input(f"URL do modem [{default_url}]: ").strip() or default_url
 
-    # Coleta Usuário
-    user = input("Usuário [admin]: ").strip()
-    if not user:
-        user = "admin"
-
-    # Coleta Senha (oculta digitação)
-    password = getpass.getpass("Senha do Modem [vivo]: ").strip()
+    user = input("Usuario [admin]: ").strip() or "admin"
+    password = getpass.getpass("Senha do modem: ").strip()
     if not password:
-        password = "vivo"
-    
-    print("\nCalculando hash da senha...")
-    pwd_hash = ModemCrypto.encode_pw(password)
-    print(f"Hash gerado: {pwd_hash[:10]}...{pwd_hash[-10:]}")
+        if driver == "zte":
+            password = "vivo"
+        else:
+            raise SystemExit("Senha obrigatoria para o driver huawei.")
 
-    # Monta o conteúdo do arquivo .env
-    env_content = f"""MODEM_URL={url}
-MODEM_USER={user}
-# MODEM_PASS não é estritamente necessário se tivermos o hash (MODEM_HASH), 
-# mas deixamos comentado para referência ou caso queira alterar manualmente depois.
-# MODEM_PASS={password}
-MODEM_HASH={pwd_hash}
-SMS_SERVER_PORT=5001
-"""
-    
-    # Grava o arquivo
-    with open(".env", "w") as f:
-        f.write(env_content)
-    
-    print("\nArquivo .env criado com sucesso!")
-    print("Configuração salva. Agora você pode executar o modem_client.py.")
+    lines = [
+        f"MODEM_DRIVER={driver}",
+        f"MODEM_URL={url}",
+        f"MODEM_USER={user}",
+    ]
+
+    if driver == "zte":
+        print("\nCalculando hash da senha ZTE...")
+        pwd_hash = ModemCrypto.encode_pw(password)
+        print(f"Hash gerado: {pwd_hash[:10]}...{pwd_hash[-10:]}")
+        lines.extend(
+            [
+                "# MODEM_PASS pode ser usado no ZTE, mas MODEM_HASH evita guardar a senha em texto.",
+                f"# MODEM_PASS={password}",
+                f"MODEM_HASH={pwd_hash}",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "# Huawei/ZOWEE usa SCRAM; MODEM_HASH nao se aplica.",
+                f"MODEM_PASS={password}",
+            ]
+        )
+
+    lines.extend(
+        [
+            "SMS_SERVER_PORT=5001",
+            "",
+        ]
+    )
+
+    with open(".env", "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+    print("\nArquivo .env criado com sucesso.")
+
 
 if __name__ == "__main__":
     setup()

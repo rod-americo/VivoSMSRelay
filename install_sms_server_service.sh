@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SERVICE_NAME="vivosmsrelay"
+SERVICE_NAME="${SMS_SERVICE_NAME:-cpe-sms-relay}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 RUN_AS_USER="${SUDO_USER:-}"
@@ -53,7 +53,7 @@ fi
 
 cat > "${SERVICE_FILE}" <<EOF
 [Unit]
-Description=Vivo SMS Relay HTTP server
+Description=CPE SMS Relay HTTP server
 After=network-online.target
 Wants=network-online.target
 

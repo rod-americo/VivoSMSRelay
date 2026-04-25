@@ -514,44 +514,53 @@ class HuaweiModemClient(BaseModemClient):
             print("Senha do roteador Huawei/ZOWEE nao configurada.")
             return False
 
-        first_nonce = secrets.token_hex(32)
         print(f"Logando como {self.username} no roteador Huawei/ZOWEE...")
-        try:
-            challenge = self._post_xml(
-                "/api/user/challenge_login",
-                {"username": self.username, "firstnonce": first_nonce, "mode": 1},
-                auth=True,
+        # A UI web pode invalidar o token CSRF entre challenge e auth.
+        for attempt in range(2):
+            first_nonce = secrets.token_hex(32)
+            self.tokens.clear()
+            try:
+                challenge = self._post_xml(
+                    "/api/user/challenge_login",
+                    {"username": self.username, "firstnonce": first_nonce, "mode": 1},
+                    auth=True,
+                )
+            except ModemApiError as exc:
+                if exc.code == "125003" and attempt == 0:
+                    continue
+                print(f"Falha no challenge_login: {exc}")
+                return False
+
+            server_nonce = challenge.get("servernonce")
+            salt = challenge.get("salt")
+            iterations = challenge.get("iterations")
+            if not server_nonce or not salt or not iterations:
+                print(f"Resposta inesperada do challenge_login: {challenge}")
+                return False
+
+            client_proof, server_signature = self._scram_client_proof(
+                self.password, salt, iterations, first_nonce, server_nonce
             )
-        except ModemApiError as exc:
-            print(f"Falha no challenge_login: {exc}")
-            return False
+            try:
+                auth_response = self._post_xml(
+                    "/api/user/authentication_login",
+                    {"clientproof": client_proof, "finalnonce": server_nonce},
+                    auth=True,
+                )
+            except ModemApiError as exc:
+                if exc.code == "125003" and attempt == 0:
+                    continue
+                print(f"Falha no authentication_login: {exc}")
+                return False
 
-        server_nonce = challenge.get("servernonce")
-        salt = challenge.get("salt")
-        iterations = challenge.get("iterations")
-        if not server_nonce or not salt or not iterations:
-            print(f"Resposta inesperada do challenge_login: {challenge}")
-            return False
+            returned_signature = auth_response.get("serversignature")
+            if returned_signature and returned_signature != server_signature:
+                print("Assinatura SCRAM do servidor nao confere.")
+                return False
 
-        client_proof, server_signature = self._scram_client_proof(
-            self.password, salt, iterations, first_nonce, server_nonce
-        )
-        try:
-            auth_response = self._post_xml(
-                "/api/user/authentication_login",
-                {"clientproof": client_proof, "finalnonce": server_nonce},
-                auth=True,
-            )
-        except ModemApiError as exc:
-            print(f"Falha no authentication_login: {exc}")
-            return False
+            return True
 
-        returned_signature = auth_response.get("serversignature")
-        if returned_signature and returned_signature != server_signature:
-            print("Assinatura SCRAM do servidor nao confere.")
-            return False
-
-        return True
+        return False
 
     @staticmethod
     def _normalize_huawei_sms(message):

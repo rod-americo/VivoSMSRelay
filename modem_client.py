@@ -451,6 +451,7 @@ class HuaweiModemClient(BaseModemClient):
         self.password = password if password else config.MODEM_PASS
         self.password_hash = password_hash
         self.tokens = []
+        self.public_key = None
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -507,16 +508,19 @@ class HuaweiModemClient(BaseModemClient):
         return _parse_xml_response(response.text)
 
     def _post_xml(self, path, data, auth=True, timeout=10, content_type=None):
+        content_type = content_type or "application/x-www-form-urlencoded; charset=UTF-8"
+        body = _dict_to_xml("request", data)
+        if ";enc" in content_type:
+            body = self._rsa_encrypt_text(body)
+
         headers = {
             "Accept": "*/*",
-            "Content-Type": content_type
-            or "application/x-www-form-urlencoded; charset=UTF-8",
+            "Content-Type": content_type,
             "_ResponseSource": "Broswer",
         }
         if auth:
             headers["__RequestVerificationToken"] = self._next_token()
 
-        body = _dict_to_xml("request", data)
         response = self.session.post(
             f"{self.BASE_URL}{path}",
             data=body.encode("utf-8"),
@@ -528,20 +532,31 @@ class HuaweiModemClient(BaseModemClient):
         return _parse_xml_response(response.text)
 
     def _get_public_key(self):
+        if self.public_key:
+            return self.public_key
         data = self._get_xml("/api/webserver/publickey", auth=False)
         modulus = data.get("encpubkeyn")
         exponent = data.get("encpubkeye")
         if not modulus or not exponent:
             raise RuntimeError(f"Resposta inesperada de publickey: {data}")
-        return modulus, exponent
+        self.public_key = (modulus, exponent)
+        return self.public_key
+
+    def _rsa_encrypt_text(self, text):
+        modulus, exponent = self._get_public_key()
+        key_length = len(modulus) // 2
+        chunk_length = key_length - 42
+        encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
+        return "".join(
+            _rsa_oaep_encrypt(encoded[i : i + chunk_length].encode("utf-8"), modulus, exponent)
+            for i in range(0, len(encoded), chunk_length)
+        )
 
     def _encrypted_nonce(self):
         first = secrets.token_hex(32)
         second = secrets.token_hex(32)
         nonce = first + second
-        encoded_nonce = base64.b64encode(nonce.encode("utf-8"))
-        modulus, exponent = self._get_public_key()
-        return _rsa_oaep_encrypt(encoded_nonce, modulus, exponent)
+        return self._rsa_encrypt_text(nonce)
 
     def _scram_client_proof(self, password, salt_hex, iterations, first_nonce, server_nonce):
         salt = bytes.fromhex(salt_hex)

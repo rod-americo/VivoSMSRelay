@@ -450,11 +450,10 @@ class HuaweiModemClient(BaseModemClient):
         # A UI oficial usa apenas a metade final do token retornado por este firmware.
         self.tokens.append(token[32:] if len(token) > 32 else token)
         self._remember_response_tokens(response)
-        return self.tokens[-1]
 
     def _next_token(self):
         if not self.tokens:
-            return self._refresh_token()
+            self._refresh_token()
         return self.tokens.pop(0)
 
     def _get_xml(self, path, auth=False, params=None, timeout=10):

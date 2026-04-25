@@ -43,30 +43,29 @@ def _xml_text(value):
 
 
 def _dict_to_xml(root_name, data):
-    root = ET.Element(root_name)
-    _append_xml_children(root, data)
-    return '<?xml version="1.0" encoding="UTF-8"?>' + ET.tostring(
-        root, encoding="unicode"
-    )
+    return '<?xml version="1.0" encoding="UTF-8"?>' + _json_to_xml(root_name, data)
 
 
-def _append_xml_children(parent, data):
-    for key, value in data.items():
-        if isinstance(value, list):
-            container = ET.SubElement(parent, key)
-            singular = key[:-1] if key.endswith("s") else "Item"
-            for item in value:
-                child = ET.SubElement(container, singular)
-                if isinstance(item, dict):
-                    _append_xml_children(child, item)
-                else:
-                    child.text = _xml_text(item)
-        elif isinstance(value, dict):
-            child = ET.SubElement(parent, key)
-            _append_xml_children(child, value)
-        else:
-            child = ET.SubElement(parent, key)
-            child.text = _xml_text(value)
+def _json_to_xml(name, value):
+    """
+    Mirror the Huawei/ZOWEE web UI jsonToXml helper.
+
+    Arrays are emitted as repeated tags with the same name and empty strings are
+    kept as explicit open/close elements, which the SMS endpoints require.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        text = "true" if value else "false"
+        return f"<{name}>{text}</{name}>"
+    if isinstance(value, (str, int, float)):
+        return f"<{name}>{html.escape(_xml_text(value), quote=False)}</{name}>"
+    if isinstance(value, list):
+        return "".join(_json_to_xml(name, item) for item in value)
+    if isinstance(value, dict):
+        children = "".join(_json_to_xml(key, child) for key, child in value.items())
+        return f"<{name}>{children}</{name}>"
+    return f"<{name}>{html.escape(_xml_text(value), quote=False)}</{name}>"
 
 
 def _element_to_value(element):
@@ -647,7 +646,7 @@ class HuaweiModemClient(BaseModemClient):
         try:
             payload = {
                 "Index": -1,
-                "Phones": [number],
+                "Phones": {"Phone": [number]},
                 "Sca": "",
                 "Content": content,
                 "Length": len(content),

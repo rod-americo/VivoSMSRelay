@@ -762,6 +762,9 @@ class HuaweiModemClient(BaseModemClient):
 
     def clear_stats(self):
         try:
+            # This endpoint rejects the token batch returned by SCRAM login on
+            # H153-381; force a fresh CSRF token before posting the reset.
+            self.tokens.clear()
             response = self._post_xml(
                 "/api/monitoring/clear-traffic",
                 {"ClearTraffic": 1},

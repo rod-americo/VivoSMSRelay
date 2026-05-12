@@ -45,10 +45,7 @@ Aliases aceitos:
 
 Instalacao:
 
-```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
+```bash python3 -m venv .venv . .venv/bin/activate pip install -r requirements.txt
 ```
 
 ## Configuracao
@@ -63,10 +60,7 @@ Ou crie manualmente.
 
 ### ZTE legado
 
-```ini
-MODEM_DRIVER=zte
-MODEM_URL=http://192.168.1.1
-MODEM_USER=admin
+```ini MODEM_DRIVER=zte MODEM_URL=http://192.168.1.1 MODEM_USER=admin
 
 # Use MODEM_PASS ou MODEM_HASH. MODEM_HASH evita guardar a senha em texto.
 MODEM_PASS=vivo
@@ -86,17 +80,11 @@ MODEM_PASS=<senha_do_painel>
 SMS_SERVER_PORT=5001
 ```
 
-`MODEM_HASH` nao se aplica ao driver `huawei`, porque esse firmware usa login SCRAM com nonce/salt/iteracoes.
-O driver replica a variante SCRAM implementada pela biblioteca `emui-crypto.js`
-do firmware, incluindo a ordem dos argumentos HMAC usada pelo roteador.
+`MODEM_HASH` nao se aplica ao driver `huawei`, porque esse firmware usa login SCRAM com nonce/salt/iteracoes. O driver replica a variante SCRAM implementada pela biblioteca `emui-crypto.js` do firmware, incluindo a ordem dos argumentos HMAC usada pelo roteador.
 
 ### Poller / webhook
 
-```ini
-SMS_WEBHOOK_URL=http://127.0.0.1:9000/sms
-SMS_POLL_INTERVAL=30
-SMS_POLL_REQUEST_TIMEOUT=15
-SMS_POLL_STATE_FILE=/caminho/para/sms_poller_state.json
+```ini SMS_WEBHOOK_URL=http://127.0.0.1:9000/sms SMS_POLL_INTERVAL=30 SMS_POLL_REQUEST_TIMEOUT=15 SMS_POLL_STATE_FILE=/caminho/para/sms_poller_state.json
 ```
 
 ## Uso rapido
@@ -109,11 +97,7 @@ python3 modem_client.py 11999999999 "Mensagem de teste"
 
 Com driver e credenciais explicitas:
 
-```bash
-python3 modem_client.py 11999999999 "Mensagem de teste" \
-  --driver huawei \
-  --user admin \
-  --password '<senha_do_painel>'
+```bash python3 modem_client.py 11999999999 "Mensagem de teste" \ --driver huawei \ --user admin \ --password '<senha_do_painel>'
 ```
 
 ### Ler SMS recebidos
@@ -126,8 +110,7 @@ python3 read_sms.py --limit 10
 
 Apenas nao lidos:
 
-```bash
-python3 read_sms.py --limit 10 --unread-only
+```bash python3 read_sms.py --limit 10 --unread-only
 ```
 
 Saida JSON:
@@ -138,8 +121,7 @@ python3 read_sms.py --limit 10 --json
 
 Marcar como lidos os SMS retornados:
 
-```bash
-python3 read_sms.py --limit 5 --mark-read
+```bash python3 read_sms.py --limit 5 --mark-read
 ```
 
 ### Encaminhar SMS novos para webhook
@@ -152,8 +134,7 @@ python3 sms_poller.py --once --webhook-url http://127.0.0.1:9000/sms
 
 Executar continuamente:
 
-```bash
-python3 sms_poller.py --webhook-url http://127.0.0.1:9000/sms
+```bash python3 sms_poller.py --webhook-url http://127.0.0.1:9000/sms
 ```
 
 Na primeira execucao, o comportamento padrao e inicializar o estado com o maior `idx` atual da inbox e nao reenviar mensagens antigas. Para reenviar tambem o backlog existente:
@@ -164,8 +145,7 @@ python3 sms_poller.py --once --replay-existing --webhook-url http://127.0.0.1:90
 
 Para marcar como lidas as mensagens encaminhadas:
 
-```bash
-python3 sms_poller.py --mark-read --webhook-url http://127.0.0.1:9000/sms
+```bash python3 sms_poller.py --mark-read --webhook-url http://127.0.0.1:9000/sms
 ```
 
 ### Consultar estatisticas de trafego
@@ -176,8 +156,7 @@ python3 modem_stats.py
 
 Limpar historico de trafego no equipamento:
 
-```bash
-python3 modem_stats.py --clear
+```bash python3 modem_stats.py --clear
 ```
 
 No driver `huawei`, este comando chama `/api/monitoring/clear-traffic` com
@@ -194,8 +173,7 @@ python3 modem_stats.py --json
 
 Suba a API:
 
-```bash
-python3 sms_server.py
+```bash python3 sms_server.py
 ```
 
 Enviar SMS:
@@ -208,8 +186,7 @@ curl -X POST http://localhost:5001/send_sms \
 
 Ler inbox:
 
-```bash
-curl "http://localhost:5001/inbox_sms?limit=10&unread_only=1"
+```bash curl "http://localhost:5001/inbox_sms?limit=10&unread_only=1"
 ```
 
 Via `POST` JSON:
@@ -222,21 +199,7 @@ curl -X POST http://localhost:5001/inbox_sms \
 
 Resposta da inbox:
 
-```json
-{
-  "status": "success",
-  "total_inbox_messages": 31,
-  "returned_messages": 2,
-  "messages": [
-    {
-      "idx": 31,
-      "number": "Vivo",
-      "time": "2026/04/13,18:19:43",
-      "content": "Mensagem...",
-      "unread": true
-    }
-  ]
-}
+```json { "status": "success", "total_inbox_messages": 31, "returned_messages": 2, "messages": [ { "idx": 31, "number": "Vivo", "time": "2026/04/13,18:19:43", "content": "Mensagem...", "unread": true } ] }
 ```
 
 ## Webhook do poller
@@ -267,8 +230,7 @@ Os instaladores agora usam nomes genericos por padrao:
 
 Instalar API:
 
-```bash
-sudo ./install_sms_server_service.sh
+```bash sudo ./install_sms_server_service.sh
 ```
 
 Instalar poller:
@@ -279,9 +241,7 @@ sudo ./install_sms_poller_service.sh
 
 Para manter nomes legados em outro host, use variaveis de ambiente:
 
-```bash
-sudo SMS_SERVICE_NAME=vivosmsrelay ./install_sms_server_service.sh
-sudo SMS_POLLER_SERVICE_NAME=vivosmsrelay-poller ./install_sms_poller_service.sh
+```bash sudo SMS_SERVICE_NAME=vivosmsrelay ./install_sms_server_service.sh sudo SMS_POLLER_SERVICE_NAME=vivosmsrelay-poller ./install_sms_poller_service.sh
 ```
 
 ## Notas operacionais
